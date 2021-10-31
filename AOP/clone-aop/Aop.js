@@ -3,7 +3,7 @@ const Aop = {
     for (const key in namespaces) {
       const ns = namespaces[key];
       for (const member in ns) {
-        if (typeof ns[member] === 'function' && member.match(pointcut)) {
+        if (typeof ns[member] === 'function' && member === pointcut) {
           (function (fn, fnName, ns) {
             ns[member] = function () {
               return advice.call(this, { fn, fnName, args: arguments });
@@ -32,6 +32,18 @@ const Aop = {
     }
 
     Aop.around(pointcut, afterAdvice, namespaces);
+  },
+  asyncAfterThrowing(pointcut, advice, namespaces) {
+    async function asyncAfterThrowingAdvice(targetInfo) {
+      try {
+        const ret = await Aop.next.call(this, targetInfo);
+        return ret;
+      } catch (e) {
+        return advice.apply(this, targetInfo.args);
+      }
+    }
+
+    Aop.around(pointcut, asyncAfterThrowingAdvice, namespaces);
   },
 };
 
