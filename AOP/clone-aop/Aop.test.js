@@ -43,6 +43,14 @@ describe('davedx/aop', () => {
     throw new Error('👻');
   }
 
+  function fetchData(...args) {
+    try {
+      target.fn(...args);
+    } catch (e) {
+      expect(executionPoints).toEqual(['error 💩']);
+    }
+  }
+
   describe('Aop.around(pointcut, advice, namespaces)', () => {
     it('타깃함수를 호출하면, advice가 실행된다', () => {
       Aop.around('fn', advice, [target]);
@@ -137,6 +145,114 @@ describe('davedx/aop', () => {
       }
 
       describeContext(Aop, advice);
+    });
+  });
+
+  describe('Aop.before(pointcut, advice, namespaces)', () => {
+    describe('advice 성공', () => {
+      it('타깃 함수를 호출하면 advice를 타깃 전에 실행한다', () => {
+        Aop.before('fn', advice, [target]);
+        target.fn();
+        expect(executionPoints).toEqual([advicePoint, targetPoint]);
+      });
+
+      it('체이닝 할 수 있다', () => {
+        Aop.before('fn', advice, [target]);
+        Aop.before('fn', advice2, [target]);
+        target.fn();
+        expect(executionPoints).toEqual([
+          advicePoint + '2',
+          advicePoint,
+          targetPoint,
+        ]);
+      });
+
+      it('인자를 전달한다', () => {
+        Aop.before('fn', advice, [target]);
+        fetchData(advicePoint, targetPoint);
+        expect(passedArgs).toEqual([advicePoint, targetPoint]);
+      });
+
+      it('target.fn의 값을 반환한다', () => {
+        Aop.before('fn', advice, [target]);
+        const ret = target.fn();
+        expect(ret).toBe(returnedTargetValue);
+      });
+
+      it('target.fn의 값을 반환한다', () => {
+        Aop.before('fn', advice, [target]);
+        const ret = target.fn();
+        expect(ret).toBe(returnedTargetValue);
+      });
+    });
+    describe('advice 실패', () => {
+      it('target.fn가 실행되지 않는다', () => {
+        Aop.before('fn', errorAdvice, [target]);
+        fetchData();
+      });
+
+      it('에러 발생 지점 advice 이후부터의 advice 와 target.fn을 실행하지 않는다', () => {
+        Aop.before('fn', advice2, [target]);
+        Aop.before('fn', errorAdvice, [target]);
+        fetchData();
+      });
+    });
+  });
+
+  describe('Aop.after(pointcut, advice, namespace)', () => {
+    describe('target.fn 성공', () => {
+      it('target.fn 실행 후 advice가 실행된다', () => {
+        Aop.after('fn', advice, [target]);
+        target.fn();
+        expect(executionPoints).toEqual([targetPoint, advicePoint]);
+      });
+
+      it('체이닝이 가능하다', () => {
+        const afterAdvice = (label) => {
+          return () => {
+            executionPoints.push(label);
+            return;
+          };
+        };
+
+        Aop.after('fn', afterAdvice('💫'), [target]);
+        Aop.after('fn', afterAdvice('💫💫'), [target]);
+        target.fn();
+
+        expect(executionPoints).toEqual([targetPoint, '💫', '💫💫']);
+      });
+
+      it('인자를 전달한다', () => {
+        const afterAdvice = (...args) => (passedArgs = args);
+        Aop.after('fn', afterAdvice, [target]);
+
+        target.fn(1, 2);
+        expect(passedArgs).toEqual([1, 2]);
+      });
+
+      it('target.fn의 값을 반환한다', () => {
+        Aop.after('fn', advice, [target]);
+        const ret = target.fn();
+        expect(ret).toEqual(returnedTargetValue);
+      });
+    });
+    describe('target.fn 실패', () => {
+      it('advice 가 실행되지 않는다', () => {
+        const errorTarget = {
+          fn() {
+            executionPoints.push('error 💩');
+            throw new Error('error');
+          },
+        };
+
+        Aop.after('fn', advice, [errorTarget]);
+
+        try {
+          errorTarget.fn();
+        } catch (e) {
+          expect(executionPoints).toEqual(['error 💩']);
+        }
+      });
     });
   });
 });

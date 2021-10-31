@@ -16,6 +16,23 @@ const Aop = {
   next(targetInfo) {
     return targetInfo.fn.apply(this, targetInfo.args);
   },
+  before(pointcut, advice, namespaces) {
+    function beforeAdvice(targetInfo) {
+      advice.apply(this, targetInfo.args);
+      return Aop.next.call(this, targetInfo);
+    }
+
+    Aop.around(pointcut, beforeAdvice, namespaces);
+  },
+  after(pointcut, advice, namespaces) {
+    function afterAdvice(targetInfo) {
+      const ret = Aop.next.call(this, targetInfo);
+      advice.apply(this, targetInfo.args);
+      return ret;
+    }
+
+    Aop.around(pointcut, afterAdvice, namespaces);
+  },
 };
 
 export default Aop;
