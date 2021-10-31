@@ -101,41 +101,80 @@ describe('davedx/aop', () => {
         return fn.apply(this, args);
       }
 
-      it('Class', () => {
-        class Fruit {
-          constructor() {
-            this.self = this;
-          }
-          getFruit() {
-            expect(this).toBe(this.self);
-          }
-        }
+      describeContext(Aop, advice);
+    });
+  });
 
-        const fruitInstance = new Fruit();
-        const spy = jest.spyOn(fruitInstance, 'getFruit').mockImplementation();
-        Aop.around('getFruit', advice, [fruitInstance]);
+  describe('Aop.next(targetInfo)', () => {
+    function advice(targetInfo) {
+      return Aop.next.call(this, targetInfo);
+    }
 
-        fruitInstance.getFruit();
-        expect(spy).toHaveBeenCalled();
-      });
-      it('Object', () => {
-        const Book = {
-          my() {
-            return this;
-          },
-          getBook() {
-            expect(this).toBe(this.my());
-          },
-        };
+    beforeEach(() => {
+      Aop.around('fn', advice, target);
+    });
 
-        const bookInstance = Book;
-        const spy = jest.spyOn(bookInstance, 'getBook').mockImplementation();
-        Aop.around('getBook', advice, [bookInstance]);
+    it('targetInfo.fn 을 호출한다', () => {
+      target.fn();
+      expect(executionPoints).toEqual([targetPoint]);
+    });
 
-        bookInstance.getBook();
+    it('targetInfo.args 에 인자를 전달한다', () => {
+      target.fn('🍭', '🍋');
+      expect(passedArgs).toEqual(['🍭', '🍋']);
+    });
 
-        expect(spy).toHaveBeenCalled();
-      });
+    it('targetInfo.fn 의 값을 반환한다', () => {
+      const ret = target.fn();
+      expect(ret).toBe(returnedTargetValue);
+    });
+
+    describe('타깃함수는 타깃객체 컨텍스트에서 실행된다', () => {
+      function advice({ fn, args }) {
+        passedArgs = args;
+        executionPoints.push(advicePoint);
+        return fn.apply(this, args);
+      }
+
+      describeContext(Aop, advice);
     });
   });
 });
+
+function describeContext(Aop, advice) {
+  class Fruit {
+    constructor() {
+      this.self = this;
+    }
+    getFruit() {
+      expect(this).toBe(this.self);
+    }
+  }
+
+  const Book = {
+    my() {
+      return this;
+    },
+    getBook() {
+      expect(this).toBe(this.my());
+    },
+  };
+
+  it('Class', () => {
+    const fruitInstance = new Fruit();
+    const spy = jest.spyOn(fruitInstance, 'getFruit').mockImplementation();
+    Aop.around('getFruit', advice, [fruitInstance]);
+
+    fruitInstance.getFruit();
+    expect(spy).toHaveBeenCalled();
+  });
+  it('Object', () => {
+    const bookInstance = Book;
+    const spy = jest.spyOn(bookInstance, 'getBook').mockImplementation();
+    Aop.around('getBook', advice, [bookInstance]);
+
+    bookInstance.getBook();
+
+    expect(spy).toHaveBeenCalled();
+  });
+}

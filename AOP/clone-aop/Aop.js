@@ -13,6 +13,9 @@ const Aop = {
       }
     }
   },
+  next(targetInfo) {
+    return targetInfo.fn.apply(this, targetInfo.args);
+  },
 };
 
 export default Aop;
